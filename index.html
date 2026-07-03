@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch. 99 — Descrambler Unit</title>
+  <script type="module" crossorigin src="./assets/index-BGECh0SD.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DXcgUIw4.css">
+</head>
+<body>
+<main class="box">
+  <div class="plate">
+    <div class="brand">CH·99 CABLE<small>ADDRESSABLE DESCRAMBLER UNIT</small></div>
+    <div class="lamp"><span id="stateTxt" role="status">SCRAMBLED</span><span id="lamp" class="dot on-red" aria-hidden="true"></span></div>
+  </div>
+
+  <div class="screen-wrap" id="stage" aria-label="TV screen. Drop a video file here.">
+    <canvas id="cv" width="640" height="480"></canvas>
+    <video id="vid" playsinline muted loop></video>
+    <div class="drop-hint" id="hint">NO SUBSCRIPTION SIGNAL<span>drop an mp4/webm here, or LOAD FILE — or run the test pattern</span></div>
+    <div class="rec-badge" id="recbadge" hidden>● REC</div>
+  </div>
+
+  <div class="rack">
+    <div class="row">
+      <button id="descramble" class="armed">DESCRAMBLE ▸ pay $ to view</button>
+      <label class="file-btn">LOAD FILE<input type="file" id="file" accept="video/*"></label>
+      <button id="testbtn">TEST PATTERN</button>
+      <button id="playbtn">▶ PLAY / ❚❚</button>
+      <button id="exportbtn">⬇ EXPORT CLIP</button>
+    </div>
+
+    <div class="toggles">
+      <div class="tog"><label for="tSync">Sync suppression (tear/roll)</label><input type="checkbox" id="tSync" checked></div>
+      <div class="tog"><label for="tInvert">Video inversion (negative)</label><input type="checkbox" id="tInvert" checked></div>
+      <div class="tog"><label for="tHue">Chroma phase error</label><input type="checkbox" id="tHue" checked></div>
+      <div class="tog"><label for="tNoise">RF snow / hum bar</label><input type="checkbox" id="tNoise" checked></div>
+      <div class="tog"><label for="tAudio">Audio garble (freq invert)</label><input type="checkbox" id="tAudio"></div>
+    </div>
+
+    <div class="sliders">
+      <div class="sld"><div class="cap"><span>TEAR DEPTH</span><span id="vTear">45</span></div><input type="range" id="sTear" min="0" max="100" value="45" aria-label="Tear depth"></div>
+      <div class="sld"><div class="cap"><span>ROLL SPEED</span><span id="vRoll">20</span></div><input type="range" id="sRoll" min="0" max="100" value="20" aria-label="Roll speed"></div>
+      <div class="sld"><div class="cap"><span>SNOW LEVEL</span><span id="vSnow">18</span></div><input type="range" id="sSnow" min="0" max="100" value="18" aria-label="Snow level"></div>
+    </div>
+  </div>
+  <div class="foot">EMULATION ONLY · SYNC-SUPPRESSION LOOK IS FAKED IN CANVAS · NO REAL SIGNAL IS DECODED</div>
+</main>
+</body>
+</html>
