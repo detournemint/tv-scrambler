@@ -4,7 +4,7 @@ import { coverFit } from './pipeline/fit';
 import { drawTestPattern } from './pipeline/testpattern';
 import { setupFileSource } from './source/fileSource';
 import { Garble } from './audio/garble';
-import { startRecording, downloadBlob } from './export/record';
+import { startRecording, downloadBlob, extensionFor } from './export/record';
 import { initFaceplate } from './ui/faceplate';
 import type { Amounts, Effects, State } from './types';
 
@@ -106,7 +106,8 @@ async function exportRecording(): Promise<void> {
       cleanup = () => clearTimeout(id);
     }
     const blob = await handle.done;
-    downloadBlob(blob, state.scrambled ? 'ch99-scrambled.webm' : 'ch99-clean.webm');
+    const ext = extensionFor(handle.mimeType);
+    downloadBlob(blob, state.scrambled ? `ch99-scrambled.${ext}` : `ch99-clean.${ext}`);
   } finally {
     cleanup();
     exporting = false;

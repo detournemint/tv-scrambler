@@ -17,8 +17,11 @@ Live: <https://detournemint.github.io/tv-scrambler/>
 - **DESCRAMBLE / RE-SCRAMBLE** flips the whole pipeline.
 - Effect toggles (sync, invert, chroma, RF, audio) and sliders (tear, roll,
   snow) change the output live.
-- **EXPORT WEBM** re-plays the clip through the scrambler and downloads the
-  recording (audio included if the garble toggle is on).
+- **EXPORT CLIP** re-plays the clip through the scrambler and downloads the
+  recording (audio included if the garble toggle is on). Records straight to
+  **mp4** where the browser supports it (Chrome, Safari) — uploadable to
+  X/Instagram/TikTok/YouTube as-is; otherwise falls back to **webm**, which
+  YouTube accepts directly.
 
 Why file drop instead of a YouTube URL? A cross-origin iframe taints the
 canvas, so per-frame pixel scrambling of an embed is impossible in a browser.

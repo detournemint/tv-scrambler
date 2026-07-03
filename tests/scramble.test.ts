@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scramble } from '../src/pipeline/scramble';
+import { scramble, invertActive, rollOffset, barPosition } from '../src/pipeline/scramble';
 import type { Effects, Frame, ScrambleParams } from '../src/types';
 
 const OFF: Effects = { sync: false, invert: false, chroma: false, rf: false, audio: false };
@@ -33,11 +33,22 @@ describe('scramble', () => {
     expect(Array.from(out.data)).toEqual(Array.from(src.data));
   });
 
-  it('inverts every channel when invert is on', () => {
+  it('inverts every channel on frames where the inversion flicker is active', () => {
+    const tOn = Array.from({ length: 200 }, (_, i) => i).find((t) => invertActive(t))!;
+    expect(tOn).toBeDefined();
     const src = makeFrame(2, 2, [10, 200, 30]);
     const out = makeFrame(2, 2);
-    scramble(src, out, params({ effects: { ...OFF, invert: true } }));
+    scramble(src, out, params({ effects: { ...OFF, invert: true }, t: tOn }));
     expect([out.data[0], out.data[1], out.data[2]]).toEqual([245, 55, 225]);
+  });
+
+  it('leaves pixels alone on frames where the inversion flicker is inactive', () => {
+    // hash01(0) === 0, so t=0 is always a non-inverted field
+    expect(invertActive(0)).toBe(false);
+    const src = makeFrame(2, 2, [10, 200, 30]);
+    const out = makeFrame(2, 2);
+    scramble(src, out, params({ effects: { ...OFF, invert: true }, t: 0 }));
+    expect([out.data[0], out.data[1], out.data[2]]).toEqual([10, 200, 30]);
   });
 
   it('swaps red and blue when chroma is on', () => {
@@ -45,22 +56,6 @@ describe('scramble', () => {
     const out = makeFrame(2, 2);
     scramble(src, out, params({ effects: { ...OFF, chroma: true } }));
     expect([out.data[0], out.data[1], out.data[2]]).toEqual([30, 200, 10]);
-  });
-
-  it('rolls rows vertically when sync is on', () => {
-    const src = makeFrame(4, 4);
-    src.data[0] = 255; // single red pixel at (0,0)
-    const out = makeFrame(4, 4);
-    // rollOff = floor(t * roll * 3) % h = floor(1 * 1 * 3) % 4 = 3
-    // output row y reads source row (y + 3) % 4, so source row 0 lands on output row 1
-    scramble(
-      src,
-      out,
-      params({ effects: { ...OFF, sync: true }, amounts: { tear: 0, roll: 1, snow: 0 }, t: 1 }),
-    );
-    const row1 = (1 * 4 + 0) * 4;
-    expect(out.data[row1]).toBe(255);
-    expect(out.data[0]).toBe(0);
   });
 
   it('paints snow pixels when rf is on and rand fires', () => {
@@ -72,5 +67,44 @@ describe('scramble', () => {
       params({ effects: { ...OFF, rf: true }, amounts: { tear: 0, roll: 0, snow: 1 }, rand: () => 0 }),
     );
     expect([out.data[0], out.data[1], out.data[2]]).toEqual([0, 0, 0]);
+  });
+});
+
+describe('rollOffset (lurching vertical roll)', () => {
+  it('holds at zero for most of the cycle', () => {
+    // f = t * roll * 0.02 = 0.2 at t=10, roll=1 — inside the 85% hold window
+    expect(rollOffset(10, 1, 480)).toBe(0);
+  });
+
+  it('flops through the frame near the end of the cycle', () => {
+    // f = 0.94 at t=47, roll=1 — inside the flop window
+    const off = rollOffset(47, 1, 480);
+    expect(off).toBeGreaterThan(0);
+    expect(off).toBeLessThan(480);
+  });
+
+  it('is zero when roll amount is zero', () => {
+    expect(rollOffset(1234, 0, 480)).toBe(0);
+  });
+});
+
+describe('invertActive', () => {
+  it('flickers: both states occur within a short window', () => {
+    const states = Array.from({ length: 200 }, (_, t) => invertActive(t));
+    expect(states).toContain(true);
+    expect(states).toContain(false);
+  });
+});
+
+describe('barPosition', () => {
+  it('stays within the drift span and keeps drifting', () => {
+    const w = 640;
+    const bw = 76;
+    const positions = Array.from({ length: 500 }, (_, t) => barPosition(t, w, bw));
+    for (const p of positions) {
+      expect(p).toBeGreaterThanOrEqual(-bw);
+      expect(p).toBeLessThan(w);
+    }
+    expect(new Set(positions.map((p) => Math.round(p))).size).toBeGreaterThan(50);
   });
 });
