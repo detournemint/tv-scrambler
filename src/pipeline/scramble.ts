@@ -7,16 +7,6 @@ const SNOW_CHANCE = 0.06; // per pixel at snow=1
 const BAR_FRACTION = 0.12; // width of the drifting H-blanking bar
 const VBI_FRACTION = 0.06; // height of the vertical blanking band shown mid-flop
 
-function hash01(n: number): number {
-  const s = Math.sin(n * 127.1) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-/** SSAVI-style inversion flicker: pseudo-random per 2-frame field block (~65% inverted). */
-export function invertActive(t: number): boolean {
-  return hash01(Math.floor(t / 2)) > 0.35;
-}
-
 /**
  * Lurching vertical roll: the picture holds steady for ~85% of the cycle,
  * then flops through a full frame height and re-locks. roll scales cycle speed.
@@ -45,8 +35,8 @@ export function barPosition(t: number, w: number, barW: number): number {
  *    visible vertical-blanking band while mid-flop, and the drifting
  *    horizontal-blanking bar (black bar + white sync-pulse stripe).
  *    Reads from src, writes into out. Wraps on X and Y.
- * 2. Per-pixel: flickering invert -> chroma swap -> hum band -> snow, in
- *    place on out. The blanking bar inverts with the field, as on a real set.
+ * 2. Per-pixel: invert -> chroma swap -> hum band -> snow, in place on out.
+ *    Inversion is steady (no field flicker — photosensitivity hazard).
  */
 export function scramble(src: Frame, out: Frame, p: ScrambleParams): Frame {
   const { width: w, height: h } = src;
@@ -113,7 +103,6 @@ export function scramble(src: Frame, out: Frame, p: ScrambleParams): Frame {
     }
   }
 
-  const invertNow = effects.invert && invertActive(t);
   for (let y = 0; y < h; y++) {
     const humBand = effects.rf
       ? (Math.sin((y + t * 4) * 0.03) * 0.5 + 0.5) * HUM_BRIGHTNESS
@@ -124,7 +113,7 @@ export function scramble(src: Frame, out: Frame, p: ScrambleParams): Frame {
       let r = d[i];
       let g = d[i + 1];
       let b = d[i + 2];
-      if (invertNow) {
+      if (effects.invert) {
         r = 255 - r;
         g = 255 - g;
         b = 255 - b;

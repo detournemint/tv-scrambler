@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scramble, invertActive, rollOffset, barPosition } from '../src/pipeline/scramble';
+import { scramble, rollOffset, barPosition } from '../src/pipeline/scramble';
 import type { Effects, Frame, ScrambleParams } from '../src/types';
 
 const OFF: Effects = { sync: false, invert: false, chroma: false, rf: false, audio: false };
@@ -33,22 +33,13 @@ describe('scramble', () => {
     expect(Array.from(out.data)).toEqual(Array.from(src.data));
   });
 
-  it('inverts every channel on frames where the inversion flicker is active', () => {
-    const tOn = Array.from({ length: 200 }, (_, i) => i).find((t) => invertActive(t))!;
-    expect(tOn).toBeDefined();
+  it('inverts every channel steadily when invert is on (no flicker — seizure safety)', () => {
     const src = makeFrame(2, 2, [10, 200, 30]);
-    const out = makeFrame(2, 2);
-    scramble(src, out, params({ effects: { ...OFF, invert: true }, t: tOn }));
-    expect([out.data[0], out.data[1], out.data[2]]).toEqual([245, 55, 225]);
-  });
-
-  it('leaves pixels alone on frames where the inversion flicker is inactive', () => {
-    // hash01(0) === 0, so t=0 is always a non-inverted field
-    expect(invertActive(0)).toBe(false);
-    const src = makeFrame(2, 2, [10, 200, 30]);
-    const out = makeFrame(2, 2);
-    scramble(src, out, params({ effects: { ...OFF, invert: true }, t: 0 }));
-    expect([out.data[0], out.data[1], out.data[2]]).toEqual([10, 200, 30]);
+    for (const t of [0, 1, 7, 31, 100]) {
+      const out = makeFrame(2, 2);
+      scramble(src, out, params({ effects: { ...OFF, invert: true }, t }));
+      expect([out.data[0], out.data[1], out.data[2]]).toEqual([245, 55, 225]);
+    }
   });
 
   it('swaps red and blue when chroma is on', () => {
@@ -85,14 +76,6 @@ describe('rollOffset (lurching vertical roll)', () => {
 
   it('is zero when roll amount is zero', () => {
     expect(rollOffset(1234, 0, 480)).toBe(0);
-  });
-});
-
-describe('invertActive', () => {
-  it('flickers: both states occur within a short window', () => {
-    const states = Array.from({ length: 200 }, (_, t) => invertActive(t));
-    expect(states).toContain(true);
-    expect(states).toContain(false);
   });
 });
 
