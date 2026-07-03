@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch. 99 — Descrambler Unit</title>
+<style>
+  /* ---- Type + tokens: cheap 80s cable-box console. Amber phosphor on set-top black. ---- */
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=DM+Mono:wght@400;500&display=swap');
+
+  :root{
+    --set-black:#0a0b0a;        /* set-top box plastic */
+    --set-panel:#141613;       /* slightly lifted panel */
+    --phosphor:#ffb531;        /* amber VFD */
+    --phosphor-dim:#7a5410;    /* unlit segment */
+    --led-red:#ff3b30;         /* SCRAMBLED lamp */
+    --led-grn:#37d067;         /* CLEAR lamp */
+    --hairline:#2a2c26;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% -10%, #17190f 0%, var(--set-black) 60%);
+    color:var(--phosphor);
+    font-family:'DM Mono',monospace;
+    min-height:100%;
+    display:flex;align-items:center;justify-content:center;
+    padding:24px;
+  }
+
+  .box{
+    width:min(880px,100%);
+    background:linear-gradient(180deg,#16180f,#0d0e0a);
+    border:1px solid var(--hairline);
+    border-radius:10px;
+    box-shadow:0 30px 80px -30px #000, inset 0 1px 0 #ffffff0a;
+    overflow:hidden;
+  }
+
+  /* faceplate header */
+  .plate{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px;
+    border-bottom:1px solid var(--hairline);
+    background:linear-gradient(180deg,#1b1d12,#111309);
+  }
+  .brand{font-family:'VT323',monospace;font-size:30px;line-height:1;letter-spacing:1px}
+  .brand small{display:block;font-family:'DM Mono';font-size:10px;letter-spacing:3px;color:var(--phosphor-dim)}
+  .lamp{display:flex;align-items:center;gap:8px;font-family:'VT323';font-size:20px}
+  .dot{width:11px;height:11px;border-radius:50%;background:#333;box-shadow:0 0 0 1px #0006 inset}
+  .dot.on-red{background:var(--led-red);box-shadow:0 0 10px 1px var(--led-red)}
+  .dot.on-grn{background:var(--led-grn);box-shadow:0 0 10px 1px var(--led-grn)}
+
+  /* screen */
+  .screen-wrap{position:relative;background:#000;aspect-ratio:4/3}
+  canvas{display:block;width:100%;height:100%}
+  video{display:none}
+  .drop-hint{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:6px;
+    font-family:'VT323';font-size:22px;color:#ffb53199;
+    pointer-events:none;text-align:center;padding:20px;
+  }
+  .drop-hint span{font-family:'DM Mono';font-size:12px;color:#ffb53155}
+  .screen-wrap.dragover{outline:2px dashed var(--phosphor);outline-offset:-8px}
+
+  /* controls */
+  .rack{padding:16px 18px 20px;display:grid;gap:16px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  button, .file-btn{
+    font-family:'VT323';font-size:19px;letter-spacing:.5px;
+    background:#1d1f13;color:var(--phosphor);
+    border:1px solid var(--hairline);border-radius:6px;
+    padding:8px 14px;cursor:pointer;user-select:none;
+    transition:transform .04s ease, background .15s;
+  }
+  button:hover,.file-btn:hover{background:#262813}
+  button:active{transform:translateY(1px)}
+  button.armed{background:var(--led-red);color:#170000;border-color:#ff6b60}
+  .file-btn input{display:none}
+
+  .toggles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+  .tog{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 12px;border:1px solid var(--hairline);border-radius:6px;
+    background:#101208;font-size:12px;
+  }
+  .tog label{font-family:'VT323';font-size:18px;letter-spacing:.5px;cursor:pointer}
+  .tog input{appearance:none;width:42px;height:22px;border-radius:12px;background:#2a2c20;position:relative;cursor:pointer;outline:none;border:1px solid var(--hairline)}
+  .tog input:checked{background:var(--phosphor-dim)}
+  .tog input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#ffb53155;transition:.15s}
+  .tog input:checked::after{left:22px;background:var(--phosphor)}
+
+  .sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .sld{display:grid;gap:5px}
+  .sld .cap{display:flex;justify-content:space-between;font-size:11px;letter-spacing:2px;color:var(--phosphor-dim)}
+  input[type=range]{appearance:none;height:4px;border-radius:2px;background:#2a2c20;outline:none}
+  input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;border-radius:50%;background:var(--phosphor);cursor:pointer;box-shadow:0 0 6px var(--phosphor)}
+  input[type=range]::-moz-range-thumb{width:15px;height:15px;border:none;border-radius:50%;background:var(--phosphor);cursor:pointer}
+
+  .foot{font-size:10px;letter-spacing:1.5px;color:var(--phosphor-dim);padding:0 18px 16px}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="plate">
+    <div class="brand">CH·99 CABLE<small>ADDRESSABLE DESCRAMBLER UNIT</small></div>
+    <div class="lamp"><span id="stateTxt">SCRAMBLED</span><span id="lamp" class="dot on-red"></span></div>
+  </div>
+
+  <div class="screen-wrap" id="stage">
+    <canvas id="cv" width="640" height="480"></canvas>
+    <video id="vid" playsinline muted loop crossorigin="anonymous"></video>
+    <div class="drop-hint" id="hint">NO SUBSCRIPTION SIGNAL<span>drop an mp4/webm here, or LOAD FILE — or run the test pattern</span></div>
+  </div>
+
+  <div class="rack">
+    <div class="row">
+      <button id="descramble" class="armed">DESCRAMBLE ▸ pay $ to view</button>
+      <label class="file-btn">LOAD FILE<input type="file" id="file" accept="video/*"></label>
+      <button id="testbtn">TEST PATTERN</button>
+      <button id="playbtn">▶ PLAY / ❚❚</button>
+    </div>
+
+    <div class="toggles">
+      <div class="tog"><label for="tSync">Sync suppression (tear/roll)</label><input type="checkbox" id="tSync" checked></div>
+      <div class="tog"><label for="tInvert">Video inversion (negative)</label><input type="checkbox" id="tInvert" checked></div>
+      <div class="tog"><label for="tHue">Chroma phase error</label><input type="checkbox" id="tHue" checked></div>
+      <div class="tog"><label for="tNoise">RF snow / hum bar</label><input type="checkbox" id="tNoise" checked></div>
+      <div class="tog"><label for="tAudio">Audio garble (freq invert)</label><input type="checkbox" id="tAudio"></div>
+    </div>
+
+    <div class="sliders">
+      <div class="sld"><div class="cap"><span>TEAR DEPTH</span><span id="vTear">55</span></div><input type="range" id="sTear" min="0" max="100" value="55"></div>
+      <div class="sld"><div class="cap"><span>ROLL SPEED</span><span id="vRoll">30</span></div><input type="range" id="sRoll" min="0" max="100" value="30"></div>
+      <div class="sld"><div class="cap"><span>SNOW LEVEL</span><span id="vSnow">40</span></div><input type="range" id="sSnow" min="0" max="100" value="40"></div>
+    </div>
+  </div>
+  <div class="foot">EMULATION ONLY · SYNC-SUPPRESSION LOOK IS FAKED IN CANVAS · NO REAL SIGNAL IS DECODED</div>
+</div>
+
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d', {willReadFrequently:true});
+const vid = document.getElementById('vid'), hint = document.getElementById('hint'), stage = document.getElementById('stage');
+const W = cv.width, H = cv.height;
+
+// offscreen buffer we draw the clean frame into, then corrupt on the way out
+const buf = document.createElement('canvas'); buf.width=W; buf.height=H;
+const bctx = buf.getContext('2d',{willReadFrequently:true});
+
+let scrambled = true;         // channel locked?
+let usingTest = false;
+let t = 0;
+
+const opt = { sync:1, invert:1, hue:1, noise:1, audio:0 };
+const amt = { tear:.55, roll:.30, snow:.40 };
+
+// ---------- wiring ----------
+const bind = (id,key,obj,scale=1)=>{const el=document.getElementById(id);el.oninput=()=>{obj[key]=el.value/scale;document.getElementById('v'+key.charAt(0).toUpperCase()+key.slice(1)).textContent=el.value;};};
+bind('sTear','tear',amt,100); bind('sRoll','roll',amt,100); bind('sSnow','snow',amt,100);
+[['tSync','sync'],['tInvert','invert'],['tHue','hue'],['tNoise','noise'],['tAudio','audio']].forEach(([id,k])=>{
+  document.getElementById(id).onchange=e=>{opt[k]=e.target.checked?1:0; if(k==='audio') setAudioScramble(e.target.checked);};
+});
+
+const desc = document.getElementById('descramble'), lamp=document.getElementById('lamp'), stateTxt=document.getElementById('stateTxt');
+desc.onclick=()=>{
+  scrambled=!scrambled;
+  desc.classList.toggle('armed',scrambled);
+  desc.textContent = scrambled ? 'DESCRAMBLE ▸ pay $ to view' : 'RE-SCRAMBLE ▸ lock channel';
+  lamp.className = 'dot '+(scrambled?'on-red':'on-grn');
+  stateTxt.textContent = scrambled?'SCRAMBLED':'CLEAR';
+};
+document.getElementById('playbtn').onclick=()=>{ vid.paused?vid.play():vid.pause(); };
+document.getElementById('testbtn').onclick=()=>{ usingTest=true; vid.pause(); vid.removeAttribute('src'); vid.load(); hint.style.display='none'; };
+
+// file / drop
+const loadFile=f=>{ if(!f) return; usingTest=false; vid.src=URL.createObjectURL(f); hint.style.display='none'; vid.play().catch(()=>{}); setupAudioGraph(); };
+document.getElementById('file').onchange=e=>loadFile(e.target.files[0]);
+['dragover','dragenter'].forEach(ev=>stage.addEventListener(ev,e=>{e.preventDefault();stage.classList.add('dragover');}));
+['dragleave','drop'].forEach(ev=>stage.addEventListener(ev,e=>{e.preventDefault();stage.classList.remove('dragover');}));
+stage.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
+
+// ---------- test pattern (SMPTE-ish bars + moving element so tearing is visible) ----------
+function drawTest(c){
+  const bars=['#c0c0c0','#c0c000','#00c0c0','#00c000','#c000c0','#c00000','#0000c0'];
+  const bw=W/bars.length;
+  bars.forEach((col,i)=>{c.fillStyle=col;c.fillRect(i*bw,0,bw+1,H*0.66);});
+  // lower castellations
+  c.fillStyle='#101010';c.fillRect(0,H*0.66,W,H*0.34);
+  c.fillStyle='#0a3a6b';c.fillRect(0,H*0.66,W/7,H*0.34);
+  c.fillStyle='#e8e8e8';c.fillRect(W*6/7,H*0.66,W/7,H*0.34);
+  // moving pluge + clock so roll/tear reads
+  const x=(t*2)%W;
+  c.fillStyle='#fff';c.fillRect(x,H*0.72,60,60);
+  c.fillStyle='#000';c.font='bold 26px monospace';c.fillText('CH 99',W/2-46,H*0.85);
+  c.fillStyle='#ffb531';c.font='16px monospace';c.fillText(new Date().toLocaleTimeString(),W/2-52,H*0.92);
+}
+
+// ---------- the scramble pipeline ----------
+function scramble(){
+  const img = bctx.getImageData(0,0,W,H);
+  const d = img.data;
+
+  // per-line horizontal shift = suppressed sync (TV can't find line start)
+  if(opt.sync){
+    const rollOff = Math.floor(t*amt.roll*3) % H;         // vertical roll
+    const tmp = new Uint8ClampedArray(d);
+    for(let y=0;y<H;y++){
+      // jittery sync loss: mostly small, occasional big tear
+      let shift = Math.sin(y*0.20 + t*0.15)*18*amt.tear;
+      if(Math.random()<0.04*amt.tear) shift += (Math.random()-0.5)*W*amt.tear;
+      shift = Math.round(shift);
+      const srcY = ((y+rollOff)%H);
+      for(let x=0;x<W;x++){
+        let sx = x - shift; sx=((sx%W)+W)%W;
+        const s=(srcY*W+sx)*4, o=(y*W+x)*4;
+        d[o]=tmp[s];d[o+1]=tmp[s+1];d[o+2]=tmp[s+2];
+      }
+    }
+  }
+
+  // pixel-wise fx
+  const hum = opt.noise?1:0;
+  for(let y=0;y<H;y++){
+    // rolling hum bar (60Hz brightness band)
+    const humBand = hum? (Math.sin((y+t*4)*0.03)*0.5+0.5)*22 : 0;
+    for(let x=0;x<W;x++){
+      const o=(y*W+x)*4;
+      if(opt.invert){ d[o]=255-d[o]; d[o+1]=255-d[o+1]; d[o+2]=255-d[o+2]; }
+      if(opt.hue){ const r=d[o]; d[o]=d[o+2]; d[o+2]=r; }   // cheap chroma phase swap
+      if(hum){ d[o]+=humBand; d[o+1]+=humBand; d[o+2]+=humBand; }
+      if(opt.noise && Math.random()<0.06*amt.snow){ const n=Math.random()*255; d[o]=n;d[o+1]=n;d[o+2]=n; }
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+// ---------- main loop ----------
+function frame(){
+  t++;
+  // draw clean source into buffer
+  if(usingTest){ drawTest(bctx); }
+  else if(vid.readyState>=2){
+    // cover-fit
+    const vr=vid.videoWidth/vid.videoHeight, cr=W/H;
+    let dw=W,dh=H,dx=0,dy=0;
+    if(vr>cr){dh=H;dw=H*vr;dx=(W-dw)/2;}else{dw=W;dh=W/vr;dy=(H-dh)/2;}
+    bctx.fillStyle='#000';bctx.fillRect(0,0,W,H);
+    try{bctx.drawImage(vid,dx,dy,dw,dh);}catch(e){}
+  } else { requestAnimationFrame(frame); return; }
+
+  if(scrambled) scramble();
+  else ctx.drawImage(buf,0,0);
+  requestAnimationFrame(frame);
+}
+frame();
+
+// ---------- audio garble: spectral inversion via ScriptProcessor-lite (ring mod) ----------
+let actx, srcNode, ringOsc, ringGain, dryGain, wetGain, connected=false;
+function setupAudioGraph(){
+  if(connected) return;
+  try{
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    srcNode = actx.createMediaElementSource(vid);
+    // ring modulation ~ frequency inversion, the classic "garbled speech" sound
+    ringOsc = actx.createOscillator(); ringOsc.frequency.value=2800; ringOsc.type='sine';
+    ringGain = actx.createGain();
+    dryGain = actx.createGain(); wetGain = actx.createGain();
+    dryGain.gain.value=1; wetGain.gain.value=0;
+    // wet path: src * osc
+    const mult = actx.createGain(); mult.gain.value=0;
+    ringOsc.connect(ringGain).connect(mult.gain);
+    srcNode.connect(mult).connect(wetGain).connect(actx.destination);
+    srcNode.connect(dryGain).connect(actx.destination);
+    ringOsc.start();
+    connected=true;
+    vid.muted=false;
+    setAudioScramble(opt.audio===1);
+  }catch(e){ console.warn('audio graph:',e); }
+}
+function setAudioScramble(on){
+  if(!connected) return;
+  wetGain.gain.setTargetAtTime(on?0.9:0, actx.currentTime, 0.02);
+  dryGain.gain.setTargetAtTime(on?0.0:1, actx.currentTime, 0.02);
+  if(actx.state==='suspended') actx.resume();
+}
+</script>
+</body>
+</html>
