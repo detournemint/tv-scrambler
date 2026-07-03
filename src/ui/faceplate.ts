@@ -20,6 +20,7 @@ export function initFaceplate() {
     testBtn: must<HTMLButtonElement>('testbtn'),
     playBtn: must<HTMLButtonElement>('playbtn'),
     exportBtn: must<HTMLButtonElement>('exportbtn'),
+    recBadge: must<HTMLElement>('recbadge'),
     toggles: {
       sync: must<HTMLInputElement>('tSync'),
       invert: must<HTMLInputElement>('tInvert'),

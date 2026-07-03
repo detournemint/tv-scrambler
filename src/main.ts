@@ -83,9 +83,15 @@ ui.exportBtn.addEventListener('click', () => {
   if (!exporting) void exportRecording();
 });
 
+const EXPORT_LABEL = '⬇ EXPORT CLIP';
+const TEST_EXPORT_MS = 10_000;
+
 async function exportRecording(): Promise<void> {
   exporting = true;
-  ui.exportBtn.disabled = true;
+  const btn = ui.exportBtn;
+  btn.disabled = true;
+  btn.classList.add('recording');
+  ui.recBadge.hidden = false;
   ui.setState('REC ●');
   garble.resume();
   const handle = startRecording(ui.canvas, garble.recordingStream());
@@ -95,24 +101,47 @@ async function exportRecording(): Promise<void> {
       video.loop = false;
       video.currentTime = 0;
       const onEnd = (): void => handle.stop();
+      const onTime = (): void => {
+        const pct = video.duration ? Math.round((video.currentTime / video.duration) * 100) : 0;
+        btn.textContent = `● RECORDING… ${pct}%`;
+      };
       video.addEventListener('ended', onEnd);
+      video.addEventListener('timeupdate', onTime);
       cleanup = () => {
         video.removeEventListener('ended', onEnd);
+        video.removeEventListener('timeupdate', onTime);
         video.loop = true;
       };
+      btn.textContent = '● RECORDING… 0%';
       await video.play();
     } else {
-      const id = setTimeout(() => handle.stop(), 10_000);
-      cleanup = () => clearTimeout(id);
+      const startedAt = performance.now();
+      const id = setTimeout(() => handle.stop(), TEST_EXPORT_MS);
+      const tick = setInterval(() => {
+        const left = Math.max(0, Math.ceil((TEST_EXPORT_MS - (performance.now() - startedAt)) / 1000));
+        btn.textContent = `● RECORDING… ${left}s`;
+      }, 250);
+      cleanup = () => {
+        clearTimeout(id);
+        clearInterval(tick);
+      };
+      btn.textContent = `● RECORDING… ${TEST_EXPORT_MS / 1000}s`;
     }
     const blob = await handle.done;
     const ext = extensionFor(handle.mimeType);
     downloadBlob(blob, state.scrambled ? `ch99-scrambled.${ext}` : `ch99-clean.${ext}`);
+    btn.textContent = '✓ SAVED — CHECK DOWNLOADS';
+    setTimeout(() => {
+      if (!exporting) btn.textContent = EXPORT_LABEL;
+    }, 2500);
   } finally {
     cleanup();
     exporting = false;
-    ui.exportBtn.disabled = false;
+    btn.disabled = false;
+    btn.classList.remove('recording');
+    ui.recBadge.hidden = true;
     ui.setScrambled(state.scrambled);
+    if (btn.textContent?.startsWith('● REC')) btn.textContent = EXPORT_LABEL;
   }
 }
 

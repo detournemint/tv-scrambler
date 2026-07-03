@@ -53,6 +53,18 @@ video{display:none}
 }
 .drop-hint span{font-family:'DM Mono',monospace;font-size:12px;color:#ffb53155}
 .screen-wrap.dragover{outline:2px dashed var(--phosphor);outline-offset:-8px}
+.rec-badge{
+  position:absolute;top:10px;right:12px;
+  font-family:'VT323',monospace;font-size:22px;letter-spacing:2px;
+  color:#ff4238;text-shadow:0 0 8px #ff3b30aa;
+  background:#000000b3;padding:2px 10px;border-radius:4px;
+  pointer-events:none;
+  animation:recpulse 1.6s ease-in-out infinite;
+}
+.rec-badge[hidden]{display:none}
+@keyframes recpulse{0%,100%{opacity:1}50%{opacity:.55}}
+@media (prefers-reduced-motion: reduce){.rec-badge{animation:none}}
+button.recording{background:#5a120d;color:#ffd9d6;border-color:#ff6b60}
 
 .rack{padding:16px 18px 20px;display:grid;gap:16px}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
