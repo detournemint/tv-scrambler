@@ -21,7 +21,7 @@ const bufCtx = buffer.getContext('2d', { willReadFrequently: true })!;
 const outFrame = visCtx.createImageData(W, H);
 
 const effects: Effects = { sync: true, invert: true, chroma: true, rf: true, audio: false };
-const amounts: Amounts = { tear: 0.55, roll: 0.3, snow: 0.4 };
+const amounts: Amounts = { tear: 0.45, roll: 0.2, snow: 0.18 };
 const state: State = { scrambled: true, source: 'test', t: 0 };
 
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');

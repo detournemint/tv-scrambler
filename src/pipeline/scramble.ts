@@ -2,8 +2,8 @@ import type { Frame, ScrambleParams } from '../types';
 
 const BEND_DEPTH = 90; // px at tear=1 for the coherent picture bend
 const LINE_TEAR_CHANCE = 0.01; // per row at tear=1: rare hard discontinuity
-const HUM_BRIGHTNESS = 22; // peak brightness add of the rolling hum bar
-const SNOW_CHANCE = 0.06; // per pixel at snow=1
+const HUM_BRIGHTNESS = 14; // peak brightness add of the rolling hum bar
+const SNOW_CHANCE = 0.045; // per pixel at snow=1
 const BAR_FRACTION = 0.12; // width of the drifting H-blanking bar
 const VBI_FRACTION = 0.06; // height of the vertical blanking band shown mid-flop
 
@@ -54,7 +54,7 @@ export function scramble(src: Frame, out: Frame, p: ScrambleParams): Frame {
     let shift = 0;
     if (effects.sync) {
       const bend =
-        Math.sin(y * 0.008 + t * 0.05) * 0.65 + Math.sin(y * 0.02 - t * 0.11) * 0.35;
+        Math.sin(y * 0.008 + t * 0.022) * 0.65 + Math.sin(y * 0.02 - t * 0.05) * 0.35;
       shift = bend * BEND_DEPTH * amounts.tear;
       if (rand() < LINE_TEAR_CHANCE * amounts.tear) {
         shift += (rand() - 0.5) * w * 0.6 * amounts.tear;
@@ -105,7 +105,7 @@ export function scramble(src: Frame, out: Frame, p: ScrambleParams): Frame {
 
   for (let y = 0; y < h; y++) {
     const humBand = effects.rf
-      ? (Math.sin((y + t * 4) * 0.03) * 0.5 + 0.5) * HUM_BRIGHTNESS
+      ? (Math.sin((y + t * 1.5) * 0.03) * 0.5 + 0.5) * HUM_BRIGHTNESS
       : 0;
     const row = y * w * 4;
     for (let x = 0; x < w; x++) {
